@@ -6,9 +6,10 @@ import { ErrorCode } from 'src/enums/error-code.enum';
 import e from 'express';
 import { UtilsService } from 'src/utils/utils.service';
 import { JwtService } from '@nestjs/jwt';
-import { access_token_private_key, access_token_public_key,refresh_token_private_key, refresh_token_public_key } from '../../constants/jwt.constants';
+import { access_token_private_key, access_token_public_key, refresh_token_private_key, refresh_token_public_key } from '../../constants/jwt.constants';
 import { ConfigService } from '@nestjs/config';
 import { KeyTokenService } from '../key-token/key-token.service';
+import { IUser } from '../user/user.interface';
 
 
 @Injectable()
@@ -48,7 +49,7 @@ export class AuthService {
       }
       const accessToken = this.generateAccessToken(payload, access_token_private_key);
       const refreshToken = this.generateRefreshToken(payload, refresh_token_private_key);
-      const publicKey = await this.keyTokenService.createKeyToken(newUser._id.toString(), access_token_public_key, access_token_private_key,refresh_token_public_key,refresh_token_private_key ,refreshToken);
+      const publicKey = await this.keyTokenService.createKeyToken(newUser._id.toString(), access_token_public_key, access_token_private_key, refresh_token_public_key, refresh_token_private_key, refreshToken);
       if (!publicKey) {
         throw new CustomException(ErrorCode.PUBLICKEY_ERROR);
       }
@@ -63,7 +64,7 @@ export class AuthService {
   }
 
 
-  async handleLogin(user: any) {
+  async handleLogin(user: IUser) {
     const payload = {
       sub: "token login",
       iss: "from server",
@@ -72,7 +73,7 @@ export class AuthService {
     }
     const accessToken = this.generateAccessToken(payload, access_token_private_key);
     const refreshToken = this.generateRefreshToken(payload, refresh_token_private_key);
-    const publicKey = await this.keyTokenService.createKeyToken(user._id.toString(), access_token_public_key, access_token_private_key,refresh_token_public_key,refresh_token_private_key, refreshToken);
+    const publicKey = await this.keyTokenService.createKeyToken(user._id.toString(), access_token_public_key, access_token_private_key, refresh_token_public_key, refresh_token_private_key, refreshToken);
     if (!publicKey) {
       throw new CustomException(ErrorCode.PUBLICKEY_ERROR);
     }
@@ -84,38 +85,59 @@ export class AuthService {
   }
 
   async handleRefreshToken(refreshToken: string) {
+    // Kiểm tra nếu refresh token đã được sử dụng
     const foundToken = await this.keyTokenService.findByRefreshTokenUsed(refreshToken);
     if (foundToken) {
-      const { _id } = await this.jwtService.verifyAsync(refreshToken, { secret: foundToken.refresh_privateKey });
+      const { _id } = await this.jwtService.verifyAsync(refreshToken, {
+        secret: foundToken.refresh_privateKey,
+      });
       await this.keyTokenService.deleteKeyById(foundToken._id.toString());
       throw new CustomException(ErrorCode.REFRESH_TOKEN_ERROR);
     }
+
+    // Tìm refresh token trong database
     const holderToken = await this.keyTokenService.findByRefreshToken(refreshToken);
     if (!holderToken) {
       throw new CustomException(ErrorCode.USER_NOT_REGISTER);
     }
-    const { _id } = await this.jwtService.verifyAsync(refreshToken, { secret: holderToken.refresh_privateKey });
 
-    const foundUser = await this.userRepository.findById(_id, []);
+    let decodedToken: any;
+    try {
+      // Xác minh token và bắt lỗi hết hạn
+      decodedToken = await this.jwtService.verifyAsync(refreshToken, {
+        secret: holderToken.refresh_privateKey,
+      });
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new CustomException(ErrorCode.REFRESH_TOKEN_EXPIRED);
+      }
+      throw new CustomException(ErrorCode.REFRESH_TOKEN_INVALID);
+    }
+
+    // Kiểm tra user từ decodedToken
+    const foundUser = await this.userRepository.findById(decodedToken._id, []);
     if (!foundUser) {
       throw new CustomException(ErrorCode.USER_NOT_REGISTER);
     }
+
+    // Tạo access token và refresh token mới
     const payload = {
-      sub: "token login",
-      iss: "from server",
+      sub: 'token login',
+      iss: 'from server',
       _id: foundUser._id,
       role: foundUser.user_role,
-    }
+    };
     const accessToken = this.generateAccessToken(payload, holderToken.access_privateKey);
     const newRefreshToken = this.generateRefreshToken(payload, holderToken.refresh_privateKey);
-    
+
+    // Cập nhật refresh token trong cơ sở dữ liệu
     await this.keyTokenService.updateKeyToken(holderToken._id.toString(), refreshToken, newRefreshToken);
-  
-    return{ 
+
+    return {
       user: foundUser,
       access_token: accessToken,
       refresh_token: newRefreshToken,
-    }
+    };
   }
 
   //Handle JWT
@@ -150,7 +172,7 @@ export class AuthService {
       }
       const refresh_token_user = this.keyTokenService.queryKeyToken({
         userId: user_id,
-        $in: {  refreshToken: refresh_token }
+        $in: { refreshToken: refresh_token }
       });
 
 

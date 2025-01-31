@@ -9,6 +9,12 @@ import { TripsModule } from './modules/trips/trips.module';
 import { KeyTokenModule } from './modules/key-token/key-token.module';
 import { ResourceModule } from './modules/resource/resource.module';
 import { RoleModule } from './modules/role/role.module';
+import { PlacesModule } from './modules/places/places.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OtpTokenModule } from './modules/otp-token/otp-token.module';
+import { MailModule } from './modules/mail/mail.module';
+
+
 
 
 @Module({
@@ -35,9 +41,14 @@ import { RoleModule } from './modules/role/role.module';
     TripsModule,
     KeyTokenModule,
     ResourceModule,
-    RoleModule
+    RoleModule,
+    PlacesModule,
+    NotificationsModule,
+    OtpTokenModule,
+    MailModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
