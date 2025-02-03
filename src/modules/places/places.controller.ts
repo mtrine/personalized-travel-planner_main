@@ -12,5 +12,8 @@ export class PlacesController {
     return this.placesService.createPlace(createPlaceDto);
   }
 
-  
+  @Get(':trip_id/distances')
+  async getPlacesWithDistance(@Param('trip_id') trip_id: string) {
+    return this.placesService.getPlacesWithDistanceByTripId(trip_id);
+  }
 }

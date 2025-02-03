@@ -13,6 +13,8 @@ import { PlacesModule } from './modules/places/places.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OtpTokenModule } from './modules/otp-token/otp-token.module';
 import { MailModule } from './modules/mail/mail.module';
+import { DistanceService } from './modules/distance/distance.service';
+import { DistanceModule } from './modules/distance/distance.module';
 
 
 
@@ -46,9 +48,10 @@ import { MailModule } from './modules/mail/mail.module';
     NotificationsModule,
     OtpTokenModule,
     MailModule,
+    DistanceModule,
 
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, DistanceService],
 })
 export class AppModule { }

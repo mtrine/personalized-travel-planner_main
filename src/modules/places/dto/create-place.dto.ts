@@ -9,7 +9,6 @@ export class CreatePlaceDto {
     @IsNumber()
     day: number;
 
-    @IsDate()
     @IsNotEmpty()
     date: Date;
 

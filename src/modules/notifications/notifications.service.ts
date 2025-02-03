@@ -10,7 +10,6 @@ export class NotificationsService {
     ) { }
 
     async scheduleNotification(data: CreateNotificationDto) {
-        console.log('Sending schedule_notification event with data:', data);
         return this.client.emit('schedule_notification', data);
     }
 }
